@@ -1,38 +1,32 @@
-// index.js - EasyPay proxy
-const express = require('express');
-const axios = require('axios');
-const bodyParser = require('body-parser');
-require('dotenv').config();
+// index.js
+import express from 'express';
+import axios from 'axios';
+import dotenv from 'dotenv';
 
+dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(bodyParser.json());
+app.use(express.json());
 
 app.post('/easypay', async (req, res) => {
-  const { phone, amount, reason, currency, txref } = req.body;
-
   try {
-    const response = await axios.post('https://www.easypay.co.ug/api/', {
-      action: "mmdeposit",
-      apikey: process.env.EASYPAY_ID,
-      secret: process.env.EASYPAY_SECRET,
-      amount,
-      phone,
-      reason,
-      currency,
-      reference: txref,
-      callback: "https://shjeeeeganggroup.iceiy.com/ipn.php"
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      'https://app.easypay.co.ug/api/',
+      req.body,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ' + process.env.EASYPAY_SECRET
+        }
       }
-    });
+    );
 
-    res.json(response.data);
+    res.status(200).json(response.data);
   } catch (error) {
-    console.error('EasyPay proxy error:', error.message);
-    res.status(500).json({ error: 'Failed to reach EasyPay' });
+    console.error('Proxy error:', error.message);
+    res.status(500).json({ error: 'Failed to reach EasyPay proxy or you are using wrong information' });
   }
 });
 
