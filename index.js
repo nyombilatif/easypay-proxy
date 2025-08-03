@@ -1,54 +1,41 @@
- // index.js
-import express from 'express';
-import https from 'https';
-import cors from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
+// index.js - EasyPay proxy
+const express = require('express');
+const axios = require('axios');
+const bodyParser = require('body-parser');
+require('dotenv').config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 10000;
 
-const EASYPAY_URL = 'https://www.easypay.co.ug/api/';
+app.use(bodyParser.json());
 
-app.post('/create-payment', (req, res) => {
-    const payload = JSON.stringify(req.body);
-    
-    const options = {
-        hostname: 'www.easypay.co.ug',
-        path: '/api/',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(payload),
-            'Client-ID': process.env.EASYPAY_CLIENT_ID,
-            'Secret-Key': process.env.EASYPAY_SECRET_KEY
-        }
-    };
+app.post('/easypay', async (req, res) => {
+  const { phone, amount, reason, currency, txref } = req.body;
 
-    const apiReq = https.request(options, apiRes => {
-        let data = '';
-        apiRes.on('data', chunk => data += chunk);
-        apiRes.on('end', () => {
-            try {
-                res.json(JSON.parse(data));
-            } catch (err) {
-                res.status(500).json({ error: "Invalid response from EasyPay", raw: data });
-            }
-        });
+  try {
+    const response = await axios.post('https://www.easypay.co.ug/api/', {
+      action: "mmdeposit",
+      apikey: process.env.EASYPAY_ID,
+      secret: process.env.EASYPAY_SECRET,
+      amount,
+      phone,
+      reason,
+      currency,
+      reference: txref,
+      callback: "https://shjeeeeganggroup.iceiy.com/ipn.php"
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
 
-    apiReq.on('error', err => {
-        console.error('Request failed:', err);
-        res.status(500).json({ error: "Request failed", details: err.message });
-    });
-
-    apiReq.write(payload);
-    apiReq.end();
+    res.json(response.data);
+  } catch (error) {
+    console.error('EasyPay proxy error:', error.message);
+    res.status(500).json({ error: 'Failed to reach EasyPay' });
+  }
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`EasyPay proxy running on port ${PORT}`);
+  console.log(`EasyPay proxy running on port ${PORT}`);
 });
